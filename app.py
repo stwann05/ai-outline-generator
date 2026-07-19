@@ -1,7 +1,7 @@
 """
 AI Outline Generator — Flask Backend
 Memanggil model AI lewat watsonx.ai SDK untuk membuat outline
-tugas/presentasi/proposal/konten kreatif berdasarkan topik dan mata kuliah.
+tugas/presentasi/proposal/konten kreatif berdasarkan topik dan jenis dokumen.
 """
 
 import json
@@ -24,23 +24,26 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
-VALID_JENIS_TUGAS = {"esai", "presentasi", "proposal", "konten kreatif", "storyboard"}
-JENIS_TUGAS_KREATIF = {"konten kreatif", "storyboard"}
+# Values must match DOCUMENT_TYPE_OPTIONS in frontend/src/components/OutlineForm.jsx
+VALID_JENIS_TUGAS = {"essay", "report", "research_paper", "proposal", "thesis", "presentation"}
+
+# Presentation leans more creative/visual than pure academic writing
+JENIS_TUGAS_KREATIF = {"presentation"}
 
 PROMPT_TEMPLATE_AKADEMIK = (
-    'Buat outline terstruktur untuk {jenis_tugas} dengan topik "{topik}" '
-    "pada mata kuliah {matkul}. Berikan 4-6 bagian utama, masing-masing "
-    "dengan 2-4 poin sub-topik yang relevan dan spesifik. "
-    'Jawab HANYA dalam format JSON valid, tanpa teks tambahan, dengan struktur: '
+    'Create a structured outline for a {jenis_tugas} on the topic "{topik}". '
+    "Provide 4-6 main sections, each with 2-4 relevant and specific sub-topic points."
+    "{instructions_block}"
+    " Answer ONLY in valid JSON format, with no additional text, using the structure: "
     '{{"judul": "", "bagian": [{{"heading": "", "poin": ["", ""]}}]}}'
 )
 
 PROMPT_TEMPLATE_KREATIF = (
-    'Buat outline {jenis_tugas} yang kreatif dan menarik dengan topik "{topik}" '
-    "untuk konteks {matkul}. Berikan 4-6 bagian utama yang eksploratif (bisa "
-    "berupa alur cerita, konsep visual, atau struktur konten), masing-masing "
-    "dengan 2-4 poin ide spesifik yang bisa menginspirasi. Jawab HANYA dalam "
-    'format JSON valid, tanpa teks tambahan, dengan struktur: '
+    'Create a creative and engaging outline for a {jenis_tugas} on the topic "{topik}". '
+    "Provide 4-6 main sections that are exploratory (can include visual concepts, "
+    "story structure, or content flow), each with 2-4 specific idea points that inspire."
+    "{instructions_block}"
+    " Answer ONLY in valid JSON format, with no additional text, using the structure: "
     '{{"judul": "", "bagian": [{{"heading": "", "poin": ["", ""]}}]}}'
 )
 
@@ -96,20 +99,18 @@ def health():
 def generate_outline():
     body = request.get_json(silent=True) or {}
 
-    topik = (body.get("topik") or "").strip()
-    matkul = (body.get("matkul") or "").strip()
-    jenis_tugas = (body.get("jenis_tugas") or "").strip().lower()
+    topik        = (body.get("topik") or "").strip()
+    jenis_tugas  = (body.get("jenis_tugas") or "").strip().lower()
+    instructions = (body.get("instructions") or "").strip()
 
     errors = []
     if not topik:
-        errors.append("'topik' wajib diisi dan tidak boleh kosong.")
-    if not matkul:
-        errors.append("'matkul' wajib diisi dan tidak boleh kosong.")
+        errors.append("'topik' is required and must not be empty.")
     if not jenis_tugas:
-        errors.append("'jenis_tugas' wajib diisi dan tidak boleh kosong.")
+        errors.append("'jenis_tugas' is required and must not be empty.")
     elif jenis_tugas not in VALID_JENIS_TUGAS:
         errors.append(
-            f"'jenis_tugas' harus salah satu dari: {', '.join(sorted(VALID_JENIS_TUGAS))}."
+            f"'jenis_tugas' must be one of: {', '.join(sorted(VALID_JENIS_TUGAS))}."
         )
 
     if errors:
@@ -117,12 +118,24 @@ def generate_outline():
         return jsonify({"success": False, "error": " ".join(errors)}), 400
 
     is_kreatif = jenis_tugas in JENIS_TUGAS_KREATIF
-    template = PROMPT_TEMPLATE_KREATIF if is_kreatif else PROMPT_TEMPLATE_AKADEMIK
+    template   = PROMPT_TEMPLATE_KREATIF if is_kreatif else PROMPT_TEMPLATE_AKADEMIK
     temperature = 0.6 if is_kreatif else 0.3
 
-    prompt = template.format(jenis_tugas=jenis_tugas, topik=topik, matkul=matkul)
+    # Build optional instructions block injected into the prompt
+    instructions_block = (
+        f" Additional instructions: {instructions}" if instructions else ""
+    )
 
-    logger.info("Request masuk: topik=%r matkul=%r jenis_tugas=%r", topik, matkul, jenis_tugas)
+    prompt = template.format(
+        jenis_tugas=jenis_tugas,
+        topik=topik,
+        instructions_block=instructions_block,
+    )
+
+    logger.info(
+        "Request masuk: topik=%r jenis_tugas=%r instructions=%r",
+        topik, jenis_tugas, instructions or "(none)",
+    )
 
     try:
         model = build_watsonx_client(temperature)

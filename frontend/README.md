@@ -118,11 +118,9 @@ Nilai valid `jenis_tugas`: `esai`, `presentasi`, `proposal`, `konten kreatif`, `
 
 Cek status server tanpa memanggil watsonx.ai.
 
-## 👥 Tim
+## Ninja Coder
 
-- [Nama anggota 1]
-- [Nama anggota 2]
-- [dst.]
+- Ivan Setiawan
 
 ## 📄 Lisensi
 

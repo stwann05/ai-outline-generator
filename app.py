@@ -22,14 +22,14 @@ app = Flask(__name__)
 CORS(app)  # Izinkan akses dari frontend (semua origin)
 
 # ── Nilai yang boleh diisi untuk jenis_tugas ──────────────────────────────────
-VALID_JENIS_TUGAS = {"esai", "presentasi", "proposal"}
+VALID_JENIS_TUGAS = {"essay", "report", "research_paper", "proposal", "thesis", "presentation"}
 
 # ── Template prompt ───────────────────────────────────────────────────────────
 PROMPT_TEMPLATE = (
-    'Buat outline terstruktur untuk {jenis_tugas} dengan topik "{topik}" '
-    "pada mata kuliah {matkul}. Berikan 4-6 bagian utama, masing-masing "
-    "dengan 2-4 poin sub-topik yang relevan dan spesifik. "
-    'Jawab HANYA dalam format JSON valid, tanpa teks tambahan, dengan struktur: '
+    'Create a structured outline for a {jenis_tugas} on the topic "{topik}". '
+    "Provide 4-6 main sections, each with 2-4 relevant and specific sub-topic points."
+    "{instructions_block}"
+    " Reply ONLY with valid JSON, no extra text, using this structure: "
     '{{"judul": "", "bagian": [{{"heading": "", "poin": ["", ""]}}]}}'
 )
 
@@ -95,29 +95,30 @@ def generate_outline():
     body = request.get_json(silent=True) or {}
 
     topik = (body.get("topik") or "").strip()
-    matkul = (body.get("matkul") or "").strip()
     jenis_tugas = (body.get("jenis_tugas") or "").strip().lower()
+    instructions = (body.get("instructions") or "").strip()
 
     errors = []
     if not topik:
-        errors.append("'topik' wajib diisi dan tidak boleh kosong.")
-    if not matkul:
-        errors.append("'matkul' wajib diisi dan tidak boleh kosong.")
+        errors.append("'topik' is required and cannot be empty.")
     if not jenis_tugas:
-        errors.append("'jenis_tugas' wajib diisi dan tidak boleh kosong.")
+        errors.append("'jenis_tugas' is required and cannot be empty.")
     elif jenis_tugas not in VALID_JENIS_TUGAS:
         errors.append(
-            f"'jenis_tugas' harus salah satu dari: {', '.join(sorted(VALID_JENIS_TUGAS))}."
+            f"'jenis_tugas' must be one of: {', '.join(sorted(VALID_JENIS_TUGAS))}."
         )
 
     if errors:
         return jsonify({"success": False, "error": " ".join(errors)}), 400
 
     # ── 2. Susun prompt ───────────────────────────────────────────────────────
+    instructions_block = (
+        f" Additional instructions: {instructions}." if instructions else ""
+    )
     prompt = PROMPT_TEMPLATE.format(
         jenis_tugas=jenis_tugas,
         topik=topik,
-        matkul=matkul,
+        instructions_block=instructions_block,
     )
 
     try:

@@ -25,27 +25,46 @@ function App() {
       if (json.success) {
         setOutlineData(json.data)
       } else {
-        setErrorMessage(json.error || 'Terjadi kesalahan dari server.')
+        setErrorMessage(json.error || 'An error occurred on the server.')
       }
     } catch {
-      setErrorMessage('Tidak dapat terhubung ke server. Pastikan backend sedang berjalan.')
+      setErrorMessage('Cannot connect to the server. Make sure the backend is running.')
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <h1 className="app-title">AI Outline Generator</h1>
-        <p className="app-subtitle">Buat outline tugas akademik secara otomatis dengan AI</p>
-      </header>
+    <>
+      {/* ── Navbar / Header ── */}
+      <nav className="navbar app-navbar">
+        <div className="container">
+          <span className="navbar-brand d-flex flex-column mb-0">
+            <span className="navbar-brand-title">AI Outline Generator</span>
+            <span className="navbar-brand-subtitle">
+              Generate structured academic outlines using IBM watsonx.ai
+            </span>
+          </span>
+        </div>
+      </nav>
 
-      <main>
-        <OutlineForm onSubmit={handleGenerateOutline} isLoading={isLoading} />
-        <OutlineResult data={outlineData} error={errorMessage} />
+      {/* ── Main content ── */}
+      <main className="app-main">
+        <div className="container">
+          <div className="row justify-content-center">
+            <div className="col-12 col-md-10 col-lg-8">
+              <OutlineForm onSubmit={handleGenerateOutline} isLoading={isLoading} />
+              <OutlineResult data={outlineData} error={errorMessage} />
+            </div>
+          </div>
+        </div>
       </main>
-    </div>
+
+      {/* ── Footer ── */}
+      <footer className="app-footer">
+        Powered by IBM watsonx.ai
+      </footer>
+    </>
   )
 }
 

@@ -14,7 +14,7 @@ function App() {
     setOutlineData(null)
 
     try {
-      const response = await fetch('https://aioutlinegeneratorapi2-tjss710x.b4a.run', {
+      const response = await fetch('https://aioutlinegeneratorapi2-tjss710x.b4a.run/generate-outline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

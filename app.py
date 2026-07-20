@@ -105,11 +105,13 @@ def generate_outline():
     # Field baru — opsional, untuk memperjelas konteks spesifik (mis. "proposal skripsi psikologi")
     instructions = (body.get("instructions") or "").strip()
 
+    # matkul opsional — fallback ke "umum" jika tidak diisi (sesuai frontend)
+    if not matkul:
+        matkul = "umum"
+
     errors = []
     if not topik:
         errors.append("'topik' wajib diisi dan tidak boleh kosong.")
-    if not matkul:
-        errors.append("'matkul' wajib diisi dan tidak boleh kosong.")
     if not jenis_tugas:
         errors.append("'jenis_tugas' wajib diisi dan tidak boleh kosong.")
     elif jenis_tugas not in VALID_JENIS_TUGAS:

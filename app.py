@@ -1,7 +1,7 @@
 """
 AI Outline Generator — Flask Backend
 Memanggil model AI lewat watsonx.ai SDK untuk membuat outline
-tugas/presentasi/proposal/konten kreatif berdasarkan topik dan mata kuliah.
+berdasarkan topik dan jenis dokumen yang dipilih.
 """
 
 import json
@@ -24,32 +24,19 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 CORS(app)
 
-VALID_JENIS_TUGAS = {"esai", "presentasi", "proposal", "konten kreatif", "storyboard"}
-JENIS_TUGAS_KREATIF = {"konten kreatif", "storyboard"}
+VALID_JENIS_TUGAS = {"essay", "report", "research_paper", "proposal", "thesis", "presentation"}
 
-PROMPT_TEMPLATE_AKADEMIK = (
-    'Buat outline terstruktur untuk {jenis_tugas} dengan topik "{topik}" '
-    "pada mata kuliah {matkul}. Berikan 4-6 bagian utama, masing-masing "
-    "dengan 2-4 poin sub-topik yang relevan dan spesifik. "
-    'Jawab HANYA dalam format JSON valid, tanpa teks tambahan, dengan struktur: '
-    '{{"judul": "", "bagian": [{{"heading": "", "poin": ["", ""]}}]}}'
-)
-
-PROMPT_TEMPLATE_KREATIF = (
-    'Buat outline {jenis_tugas} yang kreatif dan menarik dengan topik "{topik}" '
-    "untuk konteks {matkul}. Berikan 4-6 bagian utama yang eksploratif (bisa "
-    "berupa alur cerita, konsep visual, atau struktur konten), masing-masing "
-    "dengan 2-4 poin ide spesifik yang bisa menginspirasi. Jawab HANYA dalam "
-    'format JSON valid, tanpa teks tambahan, dengan struktur: '
+PROMPT_TEMPLATE = (
+    'Create a structured outline for a {jenis_tugas} on the topic "{topik}". '
+    "Provide 4-6 main sections, each with 2-4 relevant and specific sub-topic points."
+    "{instructions_block}"
+    " Reply ONLY with valid JSON, no extra text, using this structure: "
     '{{"judul": "", "bagian": [{{"heading": "", "poin": ["", ""]}}]}}'
 )
 
 
-def build_watsonx_client(temperature: float) -> ModelInference:
-    """
-    Buat instance ModelInference yang tersambung ke watsonx.ai.
-    temperature: 0.3 untuk jenis akademik (presisi), 0.6 untuk jenis kreatif (variatif).
-    """
+def build_watsonx_client() -> ModelInference:
+    """Buat instance ModelInference yang tersambung ke watsonx.ai."""
     credentials = Credentials(
         url=os.environ["WATSONX_URL"],
         api_key=os.environ["WATSONX_API_KEY"],
@@ -57,7 +44,7 @@ def build_watsonx_client(temperature: float) -> ModelInference:
 
     params = {
         GenParams.MAX_NEW_TOKENS: 1024,
-        GenParams.TEMPERATURE: temperature,
+        GenParams.TEMPERATURE: 0.3,
         GenParams.TOP_P: 0.9,
     }
 
@@ -97,50 +84,51 @@ def generate_outline():
     body = request.get_json(silent=True) or {}
 
     topik = (body.get("topik") or "").strip()
-    matkul = (body.get("matkul") or "").strip()
     jenis_tugas = (body.get("jenis_tugas") or "").strip().lower()
+    instructions = (body.get("instructions") or "").strip()
 
     errors = []
     if not topik:
-        errors.append("'topik' wajib diisi dan tidak boleh kosong.")
-    if not matkul:
-        errors.append("'matkul' wajib diisi dan tidak boleh kosong.")
+        errors.append("'topik' is required and cannot be empty.")
     if not jenis_tugas:
-        errors.append("'jenis_tugas' wajib diisi dan tidak boleh kosong.")
+        errors.append("'jenis_tugas' is required and cannot be empty.")
     elif jenis_tugas not in VALID_JENIS_TUGAS:
         errors.append(
-            f"'jenis_tugas' harus salah satu dari: {', '.join(sorted(VALID_JENIS_TUGAS))}."
+            f"'jenis_tugas' must be one of: {', '.join(sorted(VALID_JENIS_TUGAS))}."
         )
 
     if errors:
-        logger.info("Request ditolak (validasi gagal): %s", " ".join(errors))
+        logger.info("Request rejected (validation failed): %s", " ".join(errors))
         return jsonify({"success": False, "error": " ".join(errors)}), 400
 
-    is_kreatif = jenis_tugas in JENIS_TUGAS_KREATIF
-    template = PROMPT_TEMPLATE_KREATIF if is_kreatif else PROMPT_TEMPLATE_AKADEMIK
-    temperature = 0.6 if is_kreatif else 0.3
+    instructions_block = (
+        f" Additional instructions: {instructions}." if instructions else ""
+    )
+    prompt = PROMPT_TEMPLATE.format(
+        jenis_tugas=jenis_tugas,
+        topik=topik,
+        instructions_block=instructions_block,
+    )
 
-    prompt = template.format(jenis_tugas=jenis_tugas, topik=topik, matkul=matkul)
-
-    logger.info("Request masuk: topik=%r matkul=%r jenis_tugas=%r", topik, matkul, jenis_tugas)
+    logger.info("Request received: topik=%r jenis_tugas=%r", topik, jenis_tugas)
 
     try:
-        model = build_watsonx_client(temperature)
+        model = build_watsonx_client()
         response = model.generate_text(prompt=prompt)
         outline_data = extract_json_from_text(response)
 
     except KeyError as exc:
-        logger.error("Konfigurasi credentials tidak lengkap: %s", exc)
+        logger.error("Missing credentials config: %s", exc)
         return jsonify(
-            {"success": False, "error": f"Konfigurasi credentials tidak lengkap: {exc}"}
+            {"success": False, "error": f"Missing credentials configuration: {exc}"}
         ), 500
     except ValueError as exc:
-        logger.error("Gagal parsing JSON dari model: %s", exc)
+        logger.error("Failed to parse JSON from model: %s", exc)
         return jsonify({"success": False, "error": str(exc)}), 500
     except Exception as exc:  # noqa: BLE001
-        logger.error("Kesalahan watsonx.ai: %s", exc)
+        logger.error("watsonx.ai error: %s", exc)
         return jsonify(
-            {"success": False, "error": f"Terjadi kesalahan saat memanggil watsonx.ai: {exc}"}
+            {"success": False, "error": f"An error occurred while calling watsonx.ai: {exc}"}
         ), 500
 
     logger.info("Request berhasil: judul=%r", outline_data.get("judul"))

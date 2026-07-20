@@ -14,7 +14,7 @@ function App() {
     setOutlineData(null)
 
     try {
-      const response = await fetch('https://awandev.pythonanywhere.com/generate-outline', {
+      const response = await fetch('https://my-backend-app.containers.snapdeploy.app/generate-outline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),

@@ -1,24 +1,37 @@
 import { useState } from 'react'
 
-const DOCUMENT_TYPE_OPTIONS = [
-  { value: 'essay',          label: 'Essay' },
-  { value: 'report',         label: 'Report' },
-  { value: 'research_paper', label: 'Research Paper' },
+const JENIS_TUGAS_OPTIONS = [
   { value: 'proposal',       label: 'Proposal' },
-  { value: 'thesis',         label: 'Thesis' },
-  { value: 'presentation',   label: 'Presentation' },
+  { value: 'presentasi',     label: 'Presentasi' },
+  { value: 'esai',           label: 'Esai' },
+  { value: 'konten kreatif', label: 'Konten Kreatif' },
+  { value: 'storyboard',     label: 'Storyboard' },
 ]
 
+function getInstructionsPlaceholder(jenisTugas) {
+  switch (jenisTugas) {
+    case 'proposal':
+      return 'Contoh: Proposal skripsi bidang Psikologi, atau Proposal kegiatan seminar kampus, atau Proposal bisnis untuk mata kuliah Kewirausahaan'
+    case 'presentasi':
+      return 'Contoh: Presentasi tugas kelas biasa, atau Presentasi sidang skripsi, atau Pitch untuk mata kuliah Kewirausahaan'
+    case 'esai':
+      return 'Contoh: Esai argumentatif, esai reflektif, atau esai untuk beasiswa'
+    default:
+      return 'Contoh: platform yang dituju, gaya bahasa, atau batasan durasi/halaman'
+  }
+}
+
 function OutlineForm({ onSubmit, isLoading }) {
-  const [topic, setTopic]               = useState('')
-  const [docType, setDocType]           = useState('essay')
+  const [topik, setTopik]               = useState('')
+  const [matkul, setMatkul]             = useState('')
+  const [jenisTugas, setJenisTugas]     = useState('')
   const [instructions, setInstructions] = useState('')
   const [errors, setErrors]             = useState({})
 
   function validate() {
     const newErrors = {}
-    if (!topic.trim())  newErrors.topic   = 'Topic is required.'
-    if (!docType)       newErrors.docType = 'Please select a document type.'
+    if (!topik.trim())    newErrors.topik      = 'Topik wajib diisi.'
+    if (!jenisTugas)      newErrors.jenisTugas = 'Pilih jenis tugas terlebih dahulu.'
     return newErrors
   }
 
@@ -30,67 +43,82 @@ function OutlineForm({ onSubmit, isLoading }) {
       return
     }
     setErrors({})
-    const formData = {
-      topik:        topic.trim(),
-      jenis_tugas:  docType,
+    onSubmit({
+      topik:        topik.trim(),
+      matkul:       matkul.trim(),
+      jenis_tugas:  jenisTugas,
       instructions: instructions.trim(),
-    }
-    console.log('[OutlineForm] formData sebelum dikirim ke backend:', formData)
-    onSubmit(formData)
+    })
   }
 
   return (
     <div className="card form-card mb-4">
       <div className="card-header">
-        <h5>Generate a New Outline</h5>
+        <h5>Buat Outline Baru</h5>
       </div>
       <div className="card-body p-4">
         <form onSubmit={handleSubmit} noValidate>
 
-          {/* Topic */}
+          {/* Topik */}
           <div className="mb-3">
-            <label htmlFor="topic" className="form-label fw-semibold">
-              Topic
+            <label htmlFor="topik" className="form-label fw-semibold">
+              Topik
             </label>
             <input
-              id="topic"
+              id="topik"
               type="text"
-              className={`form-control form-control-lg${errors.topic ? ' is-invalid' : ''}`}
-              value={topic}
-              onChange={(e) => setTopic(e.target.value)}
-              placeholder="e.g. The impact of social media on adolescent mental health"
+              className={`form-control form-control-lg${errors.topik ? ' is-invalid' : ''}`}
+              value={topik}
+              onChange={(e) => setTopik(e.target.value)}
+              placeholder="Contoh: Dampak media sosial terhadap kesehatan mental remaja"
             />
-            {errors.topic && (
-              <div className="invalid-feedback">{errors.topic}</div>
+            {errors.topik && (
+              <div className="invalid-feedback">{errors.topik}</div>
             )}
           </div>
 
-          {/* Document Type */}
+          {/* Mata Kuliah */}
           <div className="mb-3">
-            <label htmlFor="docType" className="form-label fw-semibold">
-              Document Type
+            <label htmlFor="matkul" className="form-label fw-semibold">
+              Mata Kuliah{' '}
+              <span className="text-muted fw-normal">(opsional)</span>
+            </label>
+            <input
+              id="matkul"
+              type="text"
+              className="form-control"
+              value={matkul}
+              onChange={(e) => setMatkul(e.target.value)}
+              placeholder="Contoh: Psikologi Sosial"
+            />
+          </div>
+
+          {/* Jenis Tugas */}
+          <div className="mb-3">
+            <label htmlFor="jenisTugas" className="form-label fw-semibold">
+              Jenis Tugas
             </label>
             <select
-              id="docType"
-              className={`form-select${errors.docType ? ' is-invalid' : ''}`}
-              value={docType}
-              onChange={(e) => setDocType(e.target.value)}
+              id="jenisTugas"
+              className={`form-select${errors.jenisTugas ? ' is-invalid' : ''}`}
+              value={jenisTugas}
+              onChange={(e) => setJenisTugas(e.target.value)}
             >
-              <option value="">— Select document type —</option>
-              {DOCUMENT_TYPE_OPTIONS.map((opt) => (
+              <option value="">— Pilih jenis tugas —</option>
+              {JENIS_TUGAS_OPTIONS.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
-            {errors.docType && (
-              <div className="invalid-feedback">{errors.docType}</div>
+            {errors.jenisTugas && (
+              <div className="invalid-feedback">{errors.jenisTugas}</div>
             )}
           </div>
 
-          {/* Additional Instructions */}
+          {/* Konteks Tambahan */}
           <div className="mb-4">
             <label htmlFor="instructions" className="form-label fw-semibold">
-              Additional Instructions{' '}
-              <span className="text-muted fw-normal">(optional)</span>
+              Konteks tambahan{' '}
+              <span className="text-muted fw-normal">(opsional)</span>
             </label>
             <textarea
               id="instructions"
@@ -98,8 +126,11 @@ function OutlineForm({ onSubmit, isLoading }) {
               rows={3}
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              placeholder="e.g. Focus on recent studies, include a methodology section, target audience is undergraduate students…"
+              placeholder={getInstructionsPlaceholder(jenisTugas)}
             />
+            <div className="form-text text-muted" style={{ fontSize: '0.8rem' }}>
+              Semakin spesifik konteksnya, semakin relevan outline yang dihasilkan.
+            </div>
           </div>
 
           {/* Submit */}
